@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Local render outputs (upload as short-lived CI artifacts instead)
+renders/
+out/
+output/
+*.blend1
+*.blend2
+*.exr
+*.mov
+*.mp4
+*.gif
+*.png
+*.jpg
+*.jpeg
+*.webp
+
+# Secrets and machine-specific files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.DS_Store
+Thumbs.db
+
+# Private / product-specific assets must never be committed
+private/
+brand-assets/
+references-private/
