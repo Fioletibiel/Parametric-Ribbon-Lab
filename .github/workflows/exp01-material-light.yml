@@ -1,0 +1,108 @@
+name: EXP-01 — Blender material/light matrix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/exp01-material-light.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: exp01-material-light
+  cancel-in-progress: false
+
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Install headless Blender and image assembler
+        shell: bash
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends blender python3-pil
+          blender --version | head -3
+      - name: Check source syntax
+        run: python3 -m py_compile experiments/exp-01-material-light/render.py
+      - name: Render four material variants and clay control in light and dark
+        shell: bash
+        run: |
+          mkdir -p out/exp01
+          blender --background --threads 4 \
+            --python experiments/exp-01-material-light/render.py \
+            -- --out out/exp01 --width 900 --height 520 --samples 24
+          test -s out/exp01/exp01-ribbon-study.blend
+          for m in clay soft_satin silk_veil pearl_film satin_fiber; do
+            for theme in light dark; do
+              test -s "out/exp01/$m"__"$theme".png
+            done
+          done
+      - name: Assemble clearly labeled contact sheet and comparison report
+        shell: bash
+        run: |
+          /usr/bin/python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image, ImageDraw, ImageFont
+          out=Path("out/exp01")
+          labels=[("clay","CLAY CONTROL"),("soft_satin","SOFT SATIN"),("silk_veil","SILK VEIL"),
+                  ("pearl_film","PEARL FILM"),("satin_fiber","SATIN + FIBER")]
+          cell_w,cell_h,top,pad=370,270,88,22
+          sheet=Image.new("RGB", (len(labels)*cell_w+2*pad, 2*cell_h+top+pad), (232,230,226))
+          d=ImageDraw.Draw(sheet)
+          font="/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+          reg=ImageFont.truetype(font, 18)
+          small=ImageFont.truetype(font, 13)
+          d.text((pad,20), "PARAMETRIC RIBBON LAB / EXP-01",font=reg,fill=(42,39,41))
+          d.text((pad,50), "Controlled look-dev study / same geometry + camera / not approved art",font=small,fill=(91,84,86))
+          for j,(mode,label) in enumerate(labels):
+            d.text((pad+j*cell_w+8,top-22),label,font=small,fill=(49,43,45))
+            for i,theme in enumerate(("light","dark")):
+              im=Image.open(out/f"{mode}__{theme}.png").convert("RGB")
+              im.thumbnail((cell_w-12,cell_h-26),Image.Resampling.LANCZOS)
+              x=pad+j*cell_w+6; y=top+i*cell_h+4
+              sheet.paste(im,(x,y))
+              d.text((x+8,y+8),theme.upper(),font=small,fill=(25,23,24) if theme=="light" else (234,231,229),
+                     stroke_width=1,stroke_fill=(246,243,240) if theme=="light" else (30,29,29))
+          sheet.save(out/"exp01-contact-sheet.jpg", quality=90, subsampling=0)
+          Path("docs/renders").mkdir(parents=True,exist_ok=True)
+          (Path("docs/renders")/"exp01-contact-sheet.jpg").write_bytes((out/"exp01-contact-sheet.jpg").read_bytes())
+          Path("docs/results").mkdir(parents=True,exist_ok=True)
+          Path("docs/results/EXP01.md").write_text(
+              "# EXP-01 — first controlled material/light test\n\n"
+              "![Rendered comparisons](../renders/exp01-contact-sheet.jpg)\n\n"
+              "The same 3D ribbons and camera were used for all five material variants in two themes. "
+              "The PNGs and editable Blender scene are attached to the workflow artifact. "
+              "This is a **technical baseline**, not an approved design or animation.\n\n"
+              "## Visual review checklist\n\n"
+              "- Is the base surface readable in both themes?\n"
+              "- Which material makes the best ribbon-shaped highlights?\n"
+              "- Does the red accent remain localized?\n"
+              "- Is the satin_fiber version visibly aliased at phone size?\n"
+              "- Does the material stay elegant without a bloom/filter crutch?\n\n"
+              "No qualitative claim should be made solely from a green CI status.\n",
+              encoding="utf-8")
+          PY
+      - name: Upload complete render set and editable scene
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp01-material-light-matrix
+          path: out/exp01/
+          retention-days: 14
+          if-no-files-found: warn
+      - name: Publish only compact contact sheet and review notes
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/results/EXP01.md
+          git add -f docs/renders/exp01-contact-sheet.jpg
+          git diff --cached --quiet && exit 0
+          git commit -m 'results: publish EXP-01 material and light contact sheet'
+          git push origin HEAD:main
