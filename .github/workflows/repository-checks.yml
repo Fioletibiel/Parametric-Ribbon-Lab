@@ -27,7 +27,9 @@ jobs:
           files = [p for p in root.rglob('*') if p.is_file() and not any(x in ignored for x in p.parts)]
           for path in files:
               assert not any(part in forbidden_dirs for part in path.parts), path
-              assert path.suffix.lower() not in forbidden_ext, path
+              # Explicitly allow small, generic CI-generated comparison charts.
+              public_results = {'docs/renders/exp01-contact-sheet.jpg', 'docs/renders/exp01-v01-contact-sheet.jpg'}
+              assert path.as_posix() in public_results or path.suffix.lower() not in forbidden_ext, path
               assert path.stat().st_size <= 2_000_000, f'Unexpected large tracked file: {path}'
           print(f'Checked {len(files)} tracked or checkout files')
           PY
