@@ -37,7 +37,7 @@ jobs:
           mkdir -p out/exp01
           blender --background --threads 4 \
             --python experiments/exp-01-material-light/render.py \
-            -- --out out/exp01 --width 900 --height 520 --samples 24
+            -- --out out/exp01 --width 900 --height 520 --samples 64
           test -s out/exp01/exp01-ribbon-study.blend
           for m in clay soft_satin silk_veil pearl_film satin_fiber; do
             for theme in light dark; do
@@ -109,4 +109,5 @@ jobs:
           git add -f docs/renders/exp01-contact-sheet.jpg docs/renders/exp01-v01-contact-sheet.jpg
           git diff --cached --quiet && exit 0
           git commit -m 'results: publish EXP-01 material and light contact sheet'
+          git pull --rebase origin main
           git push origin HEAD:main
