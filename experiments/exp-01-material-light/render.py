@@ -141,6 +141,19 @@ def make_material(name):
     sock(main, ("Anisotropic IOR Level", "Anisotropic", "Anisotropy"), anisotropy)
     sock(main, ("Coat Weight", "Clearcoat"), coat)
 
+    if name in ("soft_satin", "satin_fiber"):
+        # Controlled extra specular lobe to evaluate long moving highlights.
+        # This remains genuine surface shading (not a postprocessed overlay).
+        gloss = nodes.new("ShaderNodeBsdfGlossy")
+        gloss.inputs["Roughness"].default_value = 0.15
+        gloss.inputs["Color"].default_value = (0.92, 0.90, 0.87, 1)
+        mix_gloss = nodes.new("ShaderNodeMixShader")
+        mix_gloss.inputs[0].default_value = 0.20
+        links.remove(out.inputs["Surface"].links[0])
+        links.new(main.outputs["BSDF"], mix_gloss.inputs[1])
+        links.new(gloss.outputs["BSDF"], mix_gloss.inputs[2])
+        links.new(mix_gloss.outputs[0], out.inputs["Surface"])
+
     if name == "silk_veil":
         transparent = nodes.new("ShaderNodeBsdfTransparent")
         mixer = nodes.new("ShaderNodeMixShader")
@@ -224,10 +237,10 @@ def create_scene():
     scene["center_x"] = cx
     scene["center_z"] = cz
 
-    area_light("White key softbox", (-4.0, -2.4, 4.3), 580, 2.4)
-    area_light("White edge", (2.4, 0.6, 3.3), 450, 2.7)
-    area_light("Soft fill", (-.2, -5.3, -2.4), 105, 4.5)
-    area_light("Muted red accent", (1.75, -2.6, -1.6), 165, 1.35, (.50, .055, .087))
+    area_light("White key softbox", (-3.8, -3.0, 3.4), 700, 1.85)
+    area_light("White edge", (1.6, 1.6, 3.3), 520, 1.75)
+    area_light("Soft fill", (-.4, -5.0, -2.0), 85, 4.5)
+    area_light("Muted red accent", (.55, -.30, -.85), 64, .80, (.50, .055, .087))
     materials = {m: make_material(m) for m in (*STUDIES, "clay")}
     scene.render.engine = "CYCLES"
     scene.cycles.device = "CPU"
@@ -250,12 +263,12 @@ def theme_scene(name):
     world.use_nodes = True
     bg = world.node_tree.nodes.get("Background")
     if name == "dark":
-        bg.inputs["Color"].default_value = (.028, .030, .034, 1)
-        bg.inputs["Strength"].default_value = .18
+        bg.inputs["Color"].default_value = (.035, .033, .038, 1)
+        bg.inputs["Strength"].default_value = .85
         scene.view_settings.exposure = .10
     else:
-        bg.inputs["Color"].default_value = (.86, .81, .77, 1)
-        bg.inputs["Strength"].default_value = .40
+        bg.inputs["Color"].default_value = (.82, .78, .74, 1)
+        bg.inputs["Strength"].default_value = 1.0
         scene.view_settings.exposure = .00
     scene.world = world
 
