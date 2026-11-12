@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/exp01-material-light.yml'
+      - 'experiments/exp-01-material-light/render.py'
   workflow_dispatch:
 
 permissions:
@@ -71,6 +72,9 @@ jobs:
                      stroke_width=1,stroke_fill=(246,243,240) if theme=="light" else (30,29,29))
           sheet.save(out/"exp01-contact-sheet.jpg", quality=90, subsampling=0)
           Path("docs/renders").mkdir(parents=True,exist_ok=True)
+          previous=Path("docs/renders/exp01-contact-sheet.jpg")
+          if previous.exists() and not Path("docs/renders/exp01-v01-contact-sheet.jpg").exists():
+              Path("docs/renders/exp01-v01-contact-sheet.jpg").write_bytes(previous.read_bytes())
           (Path("docs/renders")/"exp01-contact-sheet.jpg").write_bytes((out/"exp01-contact-sheet.jpg").read_bytes())
           Path("docs/results").mkdir(parents=True,exist_ok=True)
           Path("docs/results/EXP01.md").write_text(
@@ -102,7 +106,7 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add docs/results/EXP01.md
-          git add -f docs/renders/exp01-contact-sheet.jpg
+          git add -f docs/renders/exp01-contact-sheet.jpg docs/renders/exp01-v01-contact-sheet.jpg
           git diff --cached --quiet && exit 0
           git commit -m 'results: publish EXP-01 material and light contact sheet'
           git push origin HEAD:main
