@@ -30,3 +30,13 @@ This repository can host generic, reproducible mesh and shader experiments on st
 Standard hosted runners for public GitHub repositories can be used without consuming the private repository's Actions allowance under GitHub's current billing policy; check policy before enabling any larger or self-hosted runners. Heavy rendering should be explicitly dispatched, rate-limited and uploaded as short-lived artifacts rather than committed to git.
 
 Private approved artwork must be reviewed side-by-side **outside this public repository**. This repository contains no private reference media.
+
+## First completed experiment — EXP-01 Material & Light
+
+![Neutral material comparison, light and dark](docs/renders/exp01-contact-sheet.jpg)
+
+[Read the actual visual assessment](docs/results/EXP01.md) ·
+[Source and parameter definitions](experiments/exp-01-material-light/README.md) ·
+[Blender render workflow](.github/workflows/exp01-material-light.yml)
+
+**Status:** technical execution complete, **visual quality not approved**. Ten images were rendered using real ribbon meshes with identical cameras; the contact sheet shows three material families and one microscopic-roughness variation versus clay. The result still lacks the translucent, directional textile look being investigated. The next experiment is a layered, screen-space-safe material, not additional floating line geometry.
