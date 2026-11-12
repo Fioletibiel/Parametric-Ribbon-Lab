@@ -64,8 +64,8 @@ def ribbon_mesh(name, knots, index, rows=192, cols=28):
             - catmull_rom(knots, max(0.0, t - 0.001))
         ).normalized()
         width_axis = Vector((-tangent.z, 0.0, tangent.x)).normalized()
-        twist = 0.31 * math.sin(math.tau * (t * 1.40 + index * 0.13))
-        twist += 0.20 * math.sin(math.tau * (t * 0.72 - index * 0.19))
+        twist = 0.74 * math.sin(math.tau * (t * 0.72 + index * 0.21))
+        twist += 0.35 * math.sin(math.tau * (t * 1.34 - index * 0.19))
         width_axis.rotate(Quaternion(tangent, twist))
         normal_axis = tangent.cross(width_axis).normalized()
         tip = max(0.0, min(1.0, t / 0.13, (1-t) / 0.13))
@@ -73,7 +73,7 @@ def ribbon_mesh(name, knots, index, rows=192, cols=28):
         for j in range(cols + 1):
             v = j / cols
             lateral = (v - .5) * width
-            camber = 0.065 * (1.0 - (2*v - 1)**2)
+            camber = 0.17 * (1.0 - (2*v - 1)**2) * math.cos(math.tau * (t * .9 + index * .17))
             point = p + width_axis * lateral + normal_axis * camber
             verts.append(tuple(point))
     for i in range(rows):
@@ -116,16 +116,20 @@ def make_material(name):
     out = nodes.new("ShaderNodeOutputMaterial")
     main = nodes.new("ShaderNodeBsdfPrincipled")
     links.new(main.outputs["BSDF"], out.inputs["Surface"])
-    main.inputs["Base Color"].default_value = (0.77, 0.72, 0.70, 1)
+    main.inputs["Base Color"].default_value = (0.73, 0.71, 0.69, 1)
+    if name == "pearl_film":
+        main.inputs["Base Color"].default_value = (0.84, 0.80, 0.78, 1)
+    elif name == "silk_veil":
+        main.inputs["Base Color"].default_value = (0.77, 0.70, 0.70, 1)
     sock(main, ("Metallic",), 0.00)
     sock(main, ("IOR",), 1.43)
     sock(main, ("Specular IOR Level",), 0.55)
 
     config = {
-        "soft_satin":  (.28, .025, .27, .43, .015),
-        "silk_veil":   (.38, .18,  .36, .30, .00),
-        "pearl_film":  (.21, .065, .18, .24, .065),
-        "satin_fiber": (.28, .025, .27, .43, .015),
+        "soft_satin":  (.23, .025, .30, .62, .010),
+        "silk_veil":   (.36, .25,  .44, .35, .00),
+        "pearl_film":  (.13, .055, .10, .24, .20),
+        "satin_fiber": (.23, .025, .30, .62, .010),
         "clay":        (.72, .00,  .00, .00, .00),
     }
     roughness, trans, sheen, anisotropy, coat = config[name]
@@ -136,6 +140,15 @@ def make_material(name):
     sock(main, ("Sheen Weight", "Sheen"), sheen)
     sock(main, ("Anisotropic IOR Level", "Anisotropic", "Anisotropy"), anisotropy)
     sock(main, ("Coat Weight", "Clearcoat"), coat)
+
+    if name == "silk_veil":
+        transparent = nodes.new("ShaderNodeBsdfTransparent")
+        mixer = nodes.new("ShaderNodeMixShader")
+        mixer.inputs[0].default_value = 0.22
+        links.remove(out.inputs["Surface"].links[0])
+        links.new(main.outputs["BSDF"], mixer.inputs[1])
+        links.new(transparent.outputs["BSDF"], mixer.inputs[2])
+        links.new(mixer.outputs[0], out.inputs["Surface"])
 
     if name == "satin_fiber":
         # Very subtle texture-space roughness variation. NOT geometry lines.
@@ -154,8 +167,8 @@ def make_material(name):
         mix = nodes.new("ShaderNodeMapRange")
         mix.inputs["From Min"].default_value = 0.0
         mix.inputs["From Max"].default_value = 1.0
-        mix.inputs["To Min"].default_value = 0.26
-        mix.inputs["To Max"].default_value = 0.30
+        mix.inputs["To Min"].default_value = 0.21
+        mix.inputs["To Max"].default_value = 0.25
         links.new(wave.outputs["Fac"], mix.inputs["Value"])
         links.new(mix.outputs["Result"], main.inputs["Roughness"])
     return m
@@ -211,10 +224,10 @@ def create_scene():
     scene["center_x"] = cx
     scene["center_z"] = cz
 
-    area_light("White key softbox", (-2.4, -4.0, 4.1), 620, 5.0)
-    area_light("White edge", (2.7, -1.9, 3.0), 330, 3.4)
-    area_light("Soft fill", (-.2, -5.2, -2.2), 165, 3.5)
-    area_light("Muted red accent", (1.45, -2.3, -1.45), 185, 2.1, (.50, .055, .087))
+    area_light("White key softbox", (-4.0, -2.4, 4.3), 580, 2.4)
+    area_light("White edge", (2.4, 0.6, 3.3), 450, 2.7)
+    area_light("Soft fill", (-.2, -5.3, -2.4), 105, 4.5)
+    area_light("Muted red accent", (1.75, -2.6, -1.6), 165, 1.35, (.50, .055, .087))
     materials = {m: make_material(m) for m in (*STUDIES, "clay")}
     scene.render.engine = "CYCLES"
     scene.cycles.device = "CPU"
@@ -237,12 +250,12 @@ def theme_scene(name):
     world.use_nodes = True
     bg = world.node_tree.nodes.get("Background")
     if name == "dark":
-        bg.inputs["Color"].default_value = (.033, .035, .037, 1)
-        bg.inputs["Strength"].default_value = .32
+        bg.inputs["Color"].default_value = (.028, .030, .034, 1)
+        bg.inputs["Strength"].default_value = .18
         scene.view_settings.exposure = .10
     else:
-        bg.inputs["Color"].default_value = (.68, .65, .61, 1)
-        bg.inputs["Strength"].default_value = .6
+        bg.inputs["Color"].default_value = (.86, .81, .77, 1)
+        bg.inputs["Strength"].default_value = .40
         scene.view_settings.exposure = .00
     scene.world = world
 
@@ -258,7 +271,8 @@ def render_variant(meshes, materials, mode, theme, out, width, height, samples):
     scene.render.resolution_percentage = 100
     # Fit by vertical extent and x-extent; a 15% margin avoids cropping.
     aspect = width / height
-    scene.camera.data.ortho_scale = max(scene["bounds_z"], scene["bounds_x"] / aspect) * 1.35
+    # In Blender, ortho_scale is horizontal view width, not vertical view height.
+    scene.camera.data.ortho_scale = max(scene["bounds_x"], scene["bounds_z"] * aspect) * 1.28
     scene.cycles.samples = samples
     scene.cycles.use_denoising = False   # Ubuntu apt Blender may lack OIDN
     scene.render.filepath = str(out / f"{mode}__{theme}.png")
