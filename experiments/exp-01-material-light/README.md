@@ -6,13 +6,13 @@ Not a KONSTANTIN asset and not an animation; a controlled comparison of four mat
 
 | Name | Roughness | Transmission | Sheen | Anisotropy (if supported) | Coat |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| soft_satin | 0.28 | 0.025 | 0.27 | 0.43 | 0.015 |
-| silk_veil | 0.38 | 0.18 | 0.36 | 0.30 | 0 |
-| pearl_film | 0.21 | 0.065 | 0.18 | 0.24 | 0.065 |
-| satin_fiber | 0.28 | 0.025 | 0.27 | 0.43 | 0.015 |
+| soft_satin | 0.23 | 0.025 | 0.30 | 0.62 | 0.010 |
+| silk_veil | 0.36 | 0.25 | 0.44 | 0.35 | 0 |
+| pearl_film | 0.13 | 0.055 | 0.10 | 0.24 | 0.20 |
+| satin_fiber | 0.23 | 0.025 | 0.30 | 0.62 | 0.010 |
 | clay | 0.72 | 0 | 0 | 0 | 0 |
 
-Only satin_fiber adds low-amplitude UV-aligned roughness. Other settings held fixed. Both light and dark themes use the same geometric scene but different World background/ambient level.
+Only satin_fiber adds low-amplitude UV-aligned roughness. In the current experiment, satin also has an added 20% glossy lobe, while veil includes a 22% transparent mix. Other scene geometry, camera and lighting settings are held fixed per render pass. Exact source parameters are canonical. Both light and dark themes use the same geometric scene but different World background/ambient level.
 
 Blender's Principled BSDF socket names vary by version. The script looks up supported inputs explicitly, and the Blender version in CI is recorded in its logs.
 
@@ -26,5 +26,5 @@ See workflow "EXP-01 — Blender material/light matrix" for automatic rendering 
 
 - Artistic target is deliberately neutral, **not** the final product's form.
 - Blender Cycles can render effects that aren't affordable on mobile browsers.
-- 20 samples with denoising disabled is for comparison; noise may be visible.
+- 64 samples with denoising disabled were used for the final comparative matrix; noise may still be visible. See docs/results/EXP01.md for the critical visual review.
 - The experiment is intended to **separate material, light and fiber problems**, not to be treated as finished premium design.
