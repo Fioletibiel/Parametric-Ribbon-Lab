@@ -29,7 +29,8 @@ jobs:
               assert not any(part in forbidden_dirs for part in path.parts), path
               # Explicitly allow small, generic CI-generated comparison charts.
               public_results = {'docs/renders/exp01-contact-sheet.jpg', 'docs/renders/exp01-v01-contact-sheet.jpg'}
-              assert path.as_posix() in public_results or path.suffix.lower() not in forbidden_ext, path
+              is_public_study_image = path.as_posix().startswith('docs/renders/exp02/') and path.suffix.lower() == '.jpg'
+              assert path.as_posix() in public_results or is_public_study_image or path.suffix.lower() not in forbidden_ext, path
               assert path.stat().st_size <= 2_000_000, f'Unexpected large tracked file: {path}'
           print(f'Checked {len(files)} tracked or checkout files')
           PY
