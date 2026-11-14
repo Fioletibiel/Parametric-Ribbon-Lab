@@ -44,3 +44,12 @@ The images below are **actual Blender Cycles renders of parametric 3D surfaces**
 - **Rendering:** geometry is 3D and the optical shell is an additional actual surface offset from the carrier. No shader parameter on its own has yet achieved the premium visual target.
 
 **Result:** EXP-02 proves real layered shaders are functional, but **does not pass the visual quality gate**. The next useful technical test would isolate a more translucent carrier with spatially coherent optical sheen, and separately validate that material in real-time WebGL. Do not claim this static material matrix as the finished or animated Konstanty.
+
+
+## Decision — no-go for this rendering approach
+
+**Visual approach rejected. Do not iterate EXP-02 by increasing samples, tweaking Principled BSDF, or adding more optical shells.** The user's approved art-direction is not a set of thick solid ribbons. EXP-02's underlying representation is wrong: opaque satin-like carrier ribbons remain visibly dominant. More material parameters cannot change this into the desired airy, luminous, fine-stranded structure.
+
+The next candidate should be a **new optical representation**, not an EXP-02 upgrade: a spatially coherent 3D guiding surface with a procedural *strand-density/coverage field*, very low apparent opacity between fine filaments, optically constrained glints, and line density filtered in screen space. Any fiber geometry must stay coupled to the common deformation field; visual transparency must be order-aware and stable when downsampled. This approach is a hypothesis, not a demonstrated solution. Prove it first on one cropped crossing (light/dark) and at 360px, with no raster warping; reject if the material still looks opaque, plastic, noisy or line-interference-heavy.
+
+Both EXP-01 and EXP-02 are **negative aesthetic tests**; they remain archived for reproducibility, not as a future material base. Do not merge the look into the KONSTANTIN application.
