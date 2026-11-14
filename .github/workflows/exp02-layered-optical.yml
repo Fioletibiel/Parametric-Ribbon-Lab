@@ -1,0 +1,130 @@
+name: EXP-02 — Layered Optical Material
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/exp02-layered-optical.yml'
+      - 'experiments/exp-02-layered-optical-material/render.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: exp02-render
+  cancel-in-progress: false
+
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Install Blender and image processing
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends blender python3-pil
+          blender --version | head -3
+      - name: Compile scripts
+        run: |
+          python3 -m py_compile experiments/exp-02-layered-optical-material/render.py
+          python3 -m py_compile experiments/exp-01-material-light/render.py
+      - name: Render actual geometry, layers, highlights, and surface-bound filaments
+        run: |
+          mkdir -p out/exp02
+          blender --background --threads 4 \
+            --python experiments/exp-02-layered-optical-material/render.py \
+            -- --out out/exp02 --width 900 --height 520 --samples 48
+          for look in satin_veil pearl_membrane optical_fibers; do
+            for theme in light dark; do
+              test -s "out/exp02/$look"__"$theme".png
+            done
+          done
+          test -s out/exp02/exp02-layered-optical.blend
+      - name: Publish visual comparison and mobile-sized previews
+        shell: bash
+        run: |
+          /usr/bin/python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image,ImageDraw,ImageFont
+          out=Path("out/exp02")
+          pub=Path("docs/renders/exp02")
+          pub.mkdir(parents=True,exist_ok=True)
+          modes=[("satin_veil","01 / LAYERED SATIN VEIL"),("pearl_membrane","02 / PEARL MEMBRANE"),("optical_fibers","03 / SURFACE-BOUND FIBERS")]
+          themes=("light","dark")
+          w,h=420,280
+          sheet=Image.new("RGB",(w*3+48,h*2+110),(232,229,225))
+          d=ImageDraw.Draw(sheet)
+          font="/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+          big=ImageFont.truetype(font,19)
+          small=ImageFont.truetype(font,13)
+          d.text((24,16),"PARAMETRIC RIBBON LAB  /  EXP-02",font=big,fill=(35,32,36))
+          d.text((24,48),"Real 3D surfaces + optical shell / 3 materials / Light + Dark / no raster warping",font=small,fill=(84,78,80))
+          d.text((24,70),"MATERIAL STUDY — NOT A FINISHED CHARACTER OR MOTION RENDER",font=small,fill=(125,80,89))
+          for col,(mode,name) in enumerate(modes):
+            d.text((24+col*w,93),name,font=small,fill=(45,42,45))
+            for row,theme in enumerate(themes):
+              src=Image.open(out/f"{mode}__{theme}.png").convert("RGB")
+              image=src.copy()
+              image.thumbnail((w-12,h-20),Image.Resampling.LANCZOS)
+              x=24+col*w+4
+              y=119+row*h
+              sheet.paste(image,(x,y))
+              d.text((x+8,y+8),theme.upper(),font=small,
+                    fill=(25,25,25) if theme=="light" else (244,240,238),
+                    stroke_width=1,stroke_fill=(250,246,243) if theme=="light" else (23,23,26))
+              src.save(pub/f"{mode}__{theme}.jpg",quality=90,optimize=True,subsampling=0)
+              mobile=src.resize((360,208),Image.Resampling.LANCZOS)
+              mobile.save(pub/f"{mode}__{theme}__mobile.jpg",quality=86,optimize=True)
+          sheet.save(pub/"contact-sheet.jpg",quality=91,optimize=True,subsampling=0)
+          md=["# EXP-02 — Layered Optical Material",
+              "",
+              "The images below are **actual Blender Cycles renders of parametric 3D surfaces**, not generated illustrations or raster distortions. **Experimental; not an approved character.**",
+              "",
+              "![Comparison sheet](../renders/exp02/contact-sheet.jpg)",
+              "",
+              "| Material | Light | Dark |",
+              "|---|---|---|"]
+          for mode,name in modes:
+            md.append(f"| {name} | ![Light {name}](../renders/exp02/{mode}__light.jpg) | ![Dark {name}](../renders/exp02/{mode}__dark.jpg) |")
+          md += ["", "## Mobile downsample check (360 px wide)", ""]
+          for mode,name in modes:
+            md.append(f"**{name}**")
+            md.append(f"![{name} Light](../renders/exp02/{mode}__light__mobile.jpg) ![{name} Dark](../renders/exp02/{mode}__dark__mobile.jpg)")
+            md.append("")
+          md += ["## Technical record",
+                 "",
+                 "- 2 neutral base ribbon meshes with a secondary physically offset optical shell",
+                 "- Surface Fresnel response and directional glossy layer computed by Cycles",
+                 "- Variant C adds 6 host-surface filament tracks per ribbon; aliasing requires visual inspection",
+                 "- White area lights and one selective red light, shared scene/camera",
+                 "- 48 samples at 900×520; denoiser unavailable in apt Blender build",
+                 "- Material comparison only: no motion or mobile GPU rendering yet",
+                 "- All PNGs and editable Blender project are attached to the GitHub Actions artifact",
+                 "",
+                 "**Quality gate:** green CI means the images exist, not that they meet the premium aesthetic target.",
+                 ""]
+          (Path("docs/results")/"EXP02.md").write_text("\n".join(md),encoding="utf-8")
+          PY
+      - name: Upload full fidelity scene and renders
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: exp02-layered-optical-material
+          path: out/exp02/
+          retention-days: 14
+          if-no-files-found: warn
+      - name: Commit the web-viewable image gallery
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/results/EXP02.md
+          git add -f docs/renders/exp02/*.jpg
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'results: publish layered optical material previews'
+          git pull --rebase origin main
+          git push origin HEAD:main
