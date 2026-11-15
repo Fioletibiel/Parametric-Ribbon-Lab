@@ -1,5 +1,5 @@
 // Optical coverage fields, not a Principled/PBR satin and not deformed raster imagery.
-export const vertexShader=/* glsl */\`
+export const vertexShader=/* glsl */`
  precision highp float;
  uniform float uTime,uMotion,uIndex;
  varying vec2 vUv;varying vec3 vWorld;
@@ -13,8 +13,8 @@ export const vertexShader=/* glsl */\`
   p.x+=edge*uMotion*.012*cos(t*6.-uTime*.22+uIndex);
   vec4 q=modelMatrix*vec4(p,1.);
   vWorld=q.xyz;gl_Position=projectionMatrix*viewMatrix*q;
- }\`;
-export const fragmentShader=/* glsl */\`
+ }`;
+export const fragmentShader=/* glsl */`
  precision highp float;
  uniform float uTime,uTheme,uEnergy,uDensity,uIndex,uPass;
  varying vec2 vUv;varying vec3 vWorld;
@@ -51,4 +51,4 @@ export const fragmentShader=/* glsl */\`
   color*=.68+.54*whiteLight;
   color+=crimson*min(.12,red*.11);
   gl_FragColor=vec4(color,clamp(alpha,0.,.7));
- }\`;
+ }`;
