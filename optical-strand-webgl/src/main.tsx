@@ -30,7 +30,7 @@ function Filaments({theme,mode,density,paused,reduced,onFps}:{theme:Theme,mode:M
  const materials=useMemo(()=>geos.flatMap((_,i)=>[0,1].map(pass=>new THREE.ShaderMaterial({
   vertexShader,fragmentShader,transparent:true,depthTest:true,depthWrite:false,
   side:THREE.DoubleSide,blending:THREE.NormalBlending,
-  extensions:{derivatives:true},uniforms:{
+  uniforms:{
    uTime:{value:0},uIndex:{value:i},uPass:{value:pass},uTheme:{value:0},
    uEnergy:{value:.18},uMotion:{value:.6},uDensity:{value:.5}
   }
