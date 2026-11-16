@@ -5,18 +5,13 @@ import * as THREE from 'three';
  */
 type Knot=[number,number,number];
 type Definition={name:string;knots:Knot[];breadth:number;phase:number;side:number};
+// Deliberately only one crossing; full character shape is out of scope here.
 const defs:Definition[]=[
- {name:'LOWER_RETURN',phase:.38,breadth:1.16,side:-.5,knots:[
-  [-3.35,-.48,-.85],[-2.62,-.60,-.84],[-1.76,-.86,-.69],[-.69,-1.00,-.45],[.38,-.73,-.28],[1.33,-.23,-.32],[2.22,-.31,-.54],[3.32,-.76,-.76]
+ {name:'REAR_OPTICAL_SAIL',phase:-.53,breadth:1.63,side:.65,knots:[
+  [-3.45,-.47,-.82],[-2.66,.07,-.67],[-1.53,.32,-.56],[-.34,.23,-.65],[.63,.77,-.57],[1.51,1.25,-.45],[2.31,1.08,-.28],[3.43,.13,-.21]
  ]},
- {name:'UPPER_SAIL',phase:-.53,breadth:1.37,side:.5,knots:[
-  [-3.36,-.34,-.70],[-2.65,.14,-.64],[-1.55,.29,-.50],[-.38,.25,-.57],[.64,.73,-.46],[1.44,1.18,-.35],[2.35,1.13,-.19],[3.32,.36,-.32]
- ]},
- {name:'INNER_VEIL',phase:.18,breadth:.88,side:.15,knots:[
-  [-3.24,.30,-.24],[-2.43,.52,-.25],[-1.42,.02,-.05],[-.35,-.31,.02],[.60,-.31,-.13],[1.58,.17,-.13],[2.53,.44,-.12],[3.27,.07,-.28]
- ]},
- {name:'FOREGROUND_CROSSING',phase:.82,breadth:1.06,side:-.15,knots:[
-  [-3.34,-.18,.30],[-2.66,.32,.45],[-1.67,.36,.56],[-.53,-.05,.69],[.55,-.34,.82],[1.45,-.06,.83],[2.42,.56,.69],[3.31,.66,.45]
+ {name:'FRONT_REFLECTIVE_FOLD',phase:.82,breadth:1.34,side:-.10,knots:[
+  [-3.43,-.18,.32],[-2.68,.30,.50],[-1.64,.38,.58],[-.53,-.11,.73],[.50,-.51,.90],[1.44,-.17,1.0],[2.42,.58,.79],[3.43,.67,.50]
  ]}
 ];
 export const RIBBON_COUNT=defs.length;
