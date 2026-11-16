@@ -5,7 +5,7 @@ on:
     branches: ['experiment/optical-fold-v02']
     paths:
       - 'optical-strand-webgl/**'
-      - '.github/workflows/optical-strand-webgl-smoke.yml'
+      - '.github/workflows/optical-fold-v02-smoke.yml'
   workflow_dispatch:
 
 permissions:
