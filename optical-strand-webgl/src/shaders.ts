@@ -54,7 +54,7 @@ export const fragmentShader=/* glsl */`
   float redPool=exp(-2.25*dist*dist)*(.24+.76*max(0.,dot(N,normalize(vec3(.30,.50,.80)))));
   redPool*=.66+.34*uEnergy;
   // Broader depth lift is only a whisper: no opaque carrier.
-  float veilDensity=.010+.023*silk+.029*fres;
+  float veilDensity=.026+.053*silk+.055*fres;
   veilDensity*=crossSection;
   // Fibers vary in identity, local strength, width, and visibility.
   float freq=mix(17.,37.,uDensity);
@@ -66,10 +66,14 @@ export const fragmentShader=/* glsl */`
   float id=floor(phase);
   float identity=.22+.78*pow(.5+.5*sin(id*2.37+uIndex*3.7),2.2);
   float stream=.52+.48*gauss(t-(.42+.28*sin(id*.51+uIndex)),.28);
-  float opticalCoverage=(.025+.26*silk+.30*ridge+.08*fres)*identity*stream;
+  float opticalCoverage=(.04+.38*silk+.32*ridge+.10*fres)*identity*stream;
   float edgeFiber=gauss(s-.012,.025)+gauss(s-.988,.025);
-  float edgeLight=(.03+.23*ridge+.10*fres)*edgeFiber;
+  float edgeLight=(.045+.31*ridge+.17*fres)*edgeFiber;
   float sparkle=pow(fineHighlight,1.2)*(.28+.72*gauss(s-(.3+.18*sin(t*6.3+uIndex)),.24));
+  // Two rare, sharp traveling caustics, carried by the 3D sheet rather than image pixels.
+  float reflectiveRidge=.25+.11*sin(t*4.6+uIndex*1.55);
+  float heroPeak=gauss(s-reflectiveRidge,.018)*(.14+.86*gauss(t-(uIndex<.5?.32:.71),.36));
+  float heroHalo=gauss(s-reflectiveRidge,.079)*(.22+.78*glint);
   // Spectral/white light remains concentrated in optical crests.
   vec3 whiteDark=vec3(.98,.93,.90);
   vec3 whiteLight=vec3(.61,.48,.49);
@@ -83,15 +87,15 @@ export const fragmentShader=/* glsl */`
    alpha=(veilDensity+.040*redPool)*endFade;
    c=mix(c,red,clamp(redPool,0.,.4));
   }else if(uPass<1.5){
-   alpha=(strand*opticalCoverage+edgeLight+.08*sparkle)*endFade;
+   alpha=(strand*opticalCoverage+edgeLight+.08*sparkle+.47*heroPeak)*endFade;
    c*=.66+.74*glint;
    c+=red*glowIntensity*.40;
   }else{
    // A soft second optical pass on top of sharply lit edges (not a painted stripe).
-   alpha=(.035*fres+.085*ridge+.06*silk+.035*redPool)*crossSection*endFade;
+   alpha=(.047*fres+.085*ridge+.09*silk+.035*redPool+.36*heroPeak+.09*heroHalo)*crossSection*endFade;
    c=mix(silver,red,clamp(redPool*3.,0.,.72))*(.57+.75*glint);
   }
   // If the view undersamples dense filaments, fade toward low optical coverage.
-  alpha=clamp(alpha*(uTheme>.5 ? 1.25 : 1.0),0.,.51);
+  alpha=clamp(alpha*(uTheme>.5 ? 1.25 : 1.0),0.,.72);
   gl_FragColor=vec4(c,alpha);
  }`;
