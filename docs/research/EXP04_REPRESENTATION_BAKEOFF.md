@@ -46,3 +46,31 @@ GPU raymarch and Beer–Lambert-like transmittance integration of density sample
 ## Research stop rule
 
 No follow-up with parameter-only changes to sine waves or arbitrary density ramps. Identify the limiting error (geometry, material, transparency, light, output filtering) using identical camera and shape. Change only that block and re-run comparison. Store every meaningful rendered result and explicit art-direction verdict.
+
+
+## Real browser evidence — first fully passing technical run
+
+**GitHub Actions:** https://github.com/Fioletibiel/Parametric-Ribbon-Lab/actions/runs/43881152900  
+This run completed all 12 screenshots (3 methods × 2 themes × 2 viewport sizes) with no unhandled browser errors. The later low-resolution volume optimization is a cost-control follow-up, not proof of visual quality.
+
+### Human visual review of captured screenshots
+
+| Method | What the actual image shows | Art gate |
+| --- | --- | --- |
+| A: Hybrid Textile | Faint, underspecified translucent bands. Material almost disappears on dark background and has no compelling volume. | **FAIL** |
+| B: Layered 2.5D | Some controlled semi-transparent sheet mass and localized glints; the overall silhouette remains flat, horizontal and wave-like. | **FAIL** |
+| C: Volumetric Field | Diffuse fog-like broad bands; weak sharp highlights, no defined textile shell or specific fold edges. Mobile light output is particularly low contrast. | **FAIL** |
+
+**Decision: No winning visual technology selected.** These are three independent technical implementations on an identical, deliberately simplified geometry; the common scene is a confounding limitation for fidelity. The rendering comparison is useful only as a *method diagnostic* and cannot establish that A, B or C inherently fails when presented with a properly modelled target scene.
+
+### Actual next blocker, prioritized
+
+**Topological reconstruction of the approved shape** — large open folds, overlap order, non-monotonic return paths, negative space, cross sections, and camera. Current `scenePoint` uses almost exclusively left-to-right waves. None of the renderers can create the approved sculptural silhouette from that input, no matter how its shader is tuned.
+
+The next experiment should NOT produce three more variations of horizontal waves. Before material development:
+1. create an editable curve-cage with explicit control points for *front sail*, *upper arch*, *left return loop*, and *inner recess*;
+2. verify a solid silhouette/depth visualization against the reference in the same framing;
+3. test layering, normals, and optical light only once the geometric shape itself passes visual inspection;
+4. thereafter apply at least two of the tested render representations to the **same approved geometric scene**.
+
+No reference image is embedded as a texture or moved at runtime. The approved art remains a comparison-only source outside this public repository.
