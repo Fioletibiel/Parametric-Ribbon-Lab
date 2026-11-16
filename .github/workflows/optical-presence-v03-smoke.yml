@@ -1,0 +1,66 @@
+name: Optical Presence v03 WebGL visual smoke test
+
+on:
+  push:
+    branches: ['experiment/optical-presence-v03']
+    paths:
+      - 'optical-strand-webgl/**'
+      - '.github/workflows/optical-presence-v03-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: optical-presence-v03-smoke
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install project and Chromium browser
+        working-directory: optical-strand-webgl
+        run: |
+          npm install --no-audit --no-fund
+          npm install --no-save playwright@1.58.2
+          npx playwright install --with-deps chromium
+      - name: Production build
+        working-directory: optical-strand-webgl
+        run: npm run build
+      - name: Start HTTP server and run desktop/mobile screenshot validation
+        working-directory: optical-strand-webgl
+        run: |
+          npm run dev -- --port 4173 > /tmp/optical-vite.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:4173/ >/dev/null && break; sleep 1; done
+          node scripts/smoke.mjs
+      - name: Check images and image dimensions
+        working-directory: optical-strand-webgl
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import struct
+          root=Path('out/screenshots')
+          files=list(root.glob('*.png'))
+          assert len(files)==4,files
+          for p in files:
+              with p.open('rb') as f:
+                  header=f.read(24)
+              assert header[:8]==b'\x89PNG\r\n\x1a\n',p
+              w,h=struct.unpack('>II',header[16:24])
+              assert w>=350 and h>=200,(p,w,h)
+              print(p.name, w,h, p.stat().st_size)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: optical-presence-v03-screenshots
+          path: optical-strand-webgl/out/screenshots/
+          retention-days: 14
+          if-no-files-found: warn
