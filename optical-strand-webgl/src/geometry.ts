@@ -63,9 +63,10 @@ function geometryFor(index:number,kind:OpticalPass):THREE.BufferGeometry{
   x.p.push(p.x,p.y,p.z);x.uv.push(t,side);x.n.push(normal.x,normal.y,normal.z);
   x.flow.push(T.x,T.y,T.z);x.lane.push(lane);x.seed.push(seed);x.strength.push(intensity);
  }
- function quad(a:THREE.Vector3,b:THREE.Vector3,c:THREE.Vector3,d:THREE.Vector3,uv0:number,uv1:number,normal:THREE.Vector3,T:THREE.Vector3,lane:number,seed:number,intensity:number){
-  vertex(a,uv0,0,normal,T,lane,seed,intensity);vertex(b,uv0,1,normal,T,lane,seed,intensity);
-  vertex(c,uv1,0,normal,T,lane,seed,intensity);vertex(d,uv1,1,normal,T,lane,seed,intensity);
+ function quad(a:THREE.Vector3,b:THREE.Vector3,c:THREE.Vector3,d:THREE.Vector3,uv0:number,uv1:number,normal:THREE.Vector3,T:THREE.Vector3,lane:number|[number,number],seed:number,intensity:number){
+  const l0=typeof lane==='number'?lane:lane[0],l1=typeof lane==='number'?lane:lane[1];
+  vertex(a,uv0,0,normal,T,l0,seed,intensity);vertex(b,uv0,1,normal,T,l1,seed,intensity);
+  vertex(c,uv1,0,normal,T,l0,seed,intensity);vertex(d,uv1,1,normal,T,l1,seed,intensity);
   faces.push(count,count+2,count+1,count+1,count+2,count+3);count+=4;
  }
  if(kind==='veil'){
@@ -77,7 +78,7 @@ function geometryFor(index:number,kind:OpticalPass):THREE.BufferGeometry{
     // Veil is geometrically shallow and never one opaque sheet.
     const A=ribbonPoint(fr,f,t,l0),B=ribbonPoint(fr,f,t,l1);
     const C=ribbonPoint(frn,f,tn,l0),D=ribbonPoint(frn,f,tn,l1);
-    quad(A,B,C,D,t,tn,fr.B,fr.T,(l0+l1)*.5,index+.19,f.weight);
+    quad(A,B,C,D,t,tn,fr.B,fr.T,[l0,l1],index+.19,f.weight);
    }
   }
  } else {
