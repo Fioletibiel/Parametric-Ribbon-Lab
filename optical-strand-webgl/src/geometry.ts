@@ -1,36 +1,53 @@
 import * as THREE from 'three';
 
-// Neutral guide curves. The visual material is synthesized by the GPU.
-const guides: number[][][] = [
-[[-3.52,-.34,-.36],[-2.75,.28,-.19],[-1.65,.21,.15],[-.60,-.49,.50],[.27,-.56,.63],[1.45,.41,.46],[2.52,.72,.07],[3.45,.11,-.14]],
-[[-3.55,-.68,-.43],[-2.73,-.22,-.44],[-1.62,-.60,-.20],[-.47,-.71,-.15],[.44,.08,-.20],[1.33,.73,-.45],[2.36,.59,-.58],[3.50,-.23,-.74]],
-[[-3.48,.22,-.80],[-2.68,.70,-.85],[-1.65,.51,-.71],[-.64,.15,-.61],[.40,.23,-.47],[1.41,.77,-.36],[2.51,1.01,-.30],[3.51,.34,-.48]],
-[[-3.56,-.80,.15],[-2.73,-.98,.20],[-1.43,-.72,.30],[-.44,-.27,.12],[.45,.10,.04],[1.52,-.18,.23],[2.49,-.65,.28],[3.52,-.28,.21]],
+/** Optical-fold study: actual spatial lofted surfaces, not screen-space sine strokes.
+ * This is a temporary material/lighting test, not a reconstruction of the private art.
+ */
+type Knot=[number,number,number];
+type Definition={name:string;knots:Knot[];breadth:number;phase:number;side:number};
+// Deliberately only one crossing; full character shape is out of scope here.
+const defs:Definition[]=[
+ {name:'REAR_OPTICAL_SAIL',phase:-.53,breadth:1.63,side:.65,knots:[
+  [-3.45,-.47,-.82],[-2.66,.07,-.67],[-1.53,.32,-.56],[-.34,.23,-.65],[.63,.77,-.57],[1.51,1.25,-.45],[2.31,1.08,-.28],[3.43,.13,-.21]
+ ]},
+ {name:'FRONT_REFLECTIVE_FOLD',phase:.82,breadth:1.34,side:-.10,knots:[
+  [-3.43,-.18,.32],[-2.68,.30,.50],[-1.64,.38,.58],[-.53,-.11,.73],[.50,-.51,.90],[1.44,-.17,1.0],[2.42,.58,.79],[3.43,.67,.50]
+ ]}
 ];
-export const RIBBON_COUNT=guides.length;
-export function createRibbonGeometry(index:number,segmentCount=150,widthCount=22):THREE.BufferGeometry{
- const curve=new THREE.CatmullRomCurve3(guides[index].map(p=>new THREE.Vector3(p[0],p[1],p[2])),false,'centripetal',.48);
- const points:number[]=[],uvs:number[]=[],faces:number[]=[];
- for(let i=0;i<=segmentCount;i++){
-  const t=i/segmentCount,c=curve.getPoint(t),tangent=curve.getTangent(t).normalize();
-  const lateral=new THREE.Vector3(-tangent.y,tangent.x,0).normalize();
-  const twist=.47*Math.sin(t*6.2+index*1.37)+.23*Math.cos(t*12.1-index*.4);
-  lateral.applyAxisAngle(tangent,twist);
-  const normal=new THREE.Vector3().crossVectors(tangent,lateral).normalize();
-  const taper=THREE.MathUtils.smoothstep(t,0,.12)*(1-THREE.MathUtils.smoothstep(t,.84,1));
-  const breadth=(.78+.22*Math.sin(t*5.1+index*1.5))*(.22+.78*taper);
-  for(let j=0;j<=widthCount;j++){
-   const v=j/widthCount,span=(v-.5)*breadth;
-   const p=c.clone().addScaledVector(lateral,span).addScaledVector(normal,.10*Math.sin(Math.PI*v)*Math.cos(t*7+index));
-   points.push(p.x,p.y,p.z);uvs.push(t,v);
+export const RIBBON_COUNT=defs.length;
+
+function sampleCentripetal(curve:THREE.CatmullRomCurve3,t:number){
+ return curve.getPoint(t);
+}
+export function createRibbonGeometry(index:number,segments=180,across=34):THREE.BufferGeometry{
+ const def=defs[index],curve=new THREE.CatmullRomCurve3(def.knots.map(k=>new THREE.Vector3(...k)),false,'centripetal');
+ const xyz:number[]=[],uv:number[]=[],flows:number[]=[],faces:number[]=[];
+ for(let i=0;i<=segments;i++){
+  const t=i/segments,c=sampleCentripetal(curve,t);
+  const T=curve.getTangent(t).normalize();
+  // Ribbon lateral axis stays near world-up, then twists around the moving tangent.
+  let A=new THREE.Vector3(0,1,0).addScaledVector(T,-T.y).normalize();
+  const twist=.71*Math.sin(t*3.9+def.phase)+.30*Math.sin(t*8.5-def.phase*.75)+def.side*.28;
+  A.applyAxisAngle(T,twist);
+  const B=new THREE.Vector3().crossVectors(T,A).normalize();
+  const taper=Math.pow(Math.sin(Math.PI*t),.42);
+  const width=def.breadth*(.11+.89*taper)*(.86+.14*Math.sin(4.2*t+def.phase));
+  for(let j=0;j<=across;j++){
+   const s=j/across,sp=(s-.5)*width;
+   const camber=.085*Math.sin(Math.PI*s)*Math.sin(t*5+def.phase);
+   const P=c.clone().addScaledVector(A,sp).addScaledVector(B,camber);
+   xyz.push(P.x,P.y,P.z);uv.push(t,s);flows.push(T.x,T.y,T.z);
   }
  }
- for(let i=0;i<segmentCount;i++)for(let j=0;j<widthCount;j++){
-  const a=i*(widthCount+1)+j,b=a+widthCount+1;
+ for(let i=0;i<segments;i++)for(let j=0;j<across;j++){
+  const a=i*(across+1)+j,b=a+across+1;
   faces.push(a,b,a+1,b,b+1,a+1);
  }
- const g=new THREE.BufferGeometry();g.setIndex(faces);
- g.setAttribute('position',new THREE.Float32BufferAttribute(points,3));
- g.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));
- g.computeVertexNormals();g.computeBoundingSphere();return g;
+ const g=new THREE.BufferGeometry();
+ g.setIndex(faces);
+ g.setAttribute('position',new THREE.Float32BufferAttribute(xyz,3));
+ g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
+ g.setAttribute('aFlow',new THREE.Float32BufferAttribute(flows,3));
+ g.computeVertexNormals();
+ g.computeBoundingSphere();return g;
 }

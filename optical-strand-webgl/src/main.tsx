@@ -27,9 +27,9 @@ function CameraFit(){
 }
 function Filaments({theme,mode,density,paused,reduced,onFps}:{theme:Theme,mode:Mode,density:number,paused:boolean,reduced:boolean,onFps:(x:number)=>void}){
  const geos=useMemo(()=>Array.from({length:RIBBON_COUNT},(_,i)=>createRibbonGeometry(i)),[]);
- const materials=useMemo(()=>geos.flatMap((_,i)=>[0,1].map(pass=>new THREE.ShaderMaterial({
+ const materials=useMemo(()=>geos.flatMap((_,i)=>[0,1,2].map(pass=>new THREE.ShaderMaterial({
   vertexShader,fragmentShader,transparent:true,depthTest:true,depthWrite:false,
-  side:THREE.DoubleSide,blending:THREE.NormalBlending,
+  side:THREE.DoubleSide,blending:pass===2?THREE.AdditiveBlending:THREE.NormalBlending,
   uniforms:{
    uTime:{value:0},uIndex:{value:i},uPass:{value:pass},uTheme:{value:0},
    uEnergy:{value:.18},uMotion:{value:.6},uDensity:{value:.5}
@@ -49,7 +49,7 @@ function Filaments({theme,mode,density,paused,reduced,onFps}:{theme:Theme,mode:M
    m.uniforms.uDensity.value=density;
   });
  });
- return <group>{geos.flatMap((g,i)=>[0,1].map(p=><mesh key={i+'-'+p} geometry={g} material={materials[i*2+p]} renderOrder={i*2+p}/>))}</group>;
+ return <group>{geos.flatMap((g,i)=>[0,1,2].map(p=><mesh key={i+'-'+p} geometry={g} material={materials[i*3+p]} renderOrder={i*3+p}/>))}</group>;
 }
 function Glyph({kind}:{kind:'sun'|'moon'|'play'|'pause'|'github'|'expand'}){
  const strokes:Record<string,React.ReactNode>={
@@ -72,7 +72,7 @@ function App(){
  const selected=modes.find(x=>x.id===mode)!;
  return <main className={theme}><div className="shell">
  <header className="topbar"><div className="brand"><span className="sound-bars"><i/><i/><i/><i/><i/></span>KONSTANTIN <span className="separator"/> <small>RESEARCH DIVISION</small></div><a className="repo" href="https://github.com/Fioletibiel/Parametric-Ribbon-Lab/tree/experiment/optical-strand-webgl-v01/optical-strand-webgl" target="_blank" rel="noreferrer"><Glyph kind="github"/> PUBLIC LAB ↗</a></header>
- <section className="intro"><div className="eyebrow"><span/> KONSTANTY / INTERACTIVE MATERIAL STUDY</div><h1>Światło, które <em>ma formę.</em></h1><p>Włókna optyczne, przezroczyste woale i poruszające się refleksy. Jeden spójny, animowany obiekt przestrzenny — bez deformowania obrazów.</p></section>
+ <section className="intro"><div className="eyebrow"><span/> KONSTANTY / OPTICAL FOLD STUDY 02</div><h1>Światło, które <em>ma formę.</em></h1><p>Nowy test światłocienia na rzeczywistych przeplotach 3D. Kontrolowane włókna, lekkie woale oraz selektywne białe i czerwone refleksy.</p></section>
  <div className="stage-bar"><span className="online"><b/> LIVE GPU <i>// OPTICAL STRANDS</i></span><div className="themes"><button className={theme==='light'?'active':''} onClick={()=>setTheme('light')}><Glyph kind="sun"/>Light</button><button className={theme==='dark'?'active':''} onClick={()=>setTheme('dark')}><Glyph kind="moon"/>Dark</button></div></div>
  <section className={'stage'+(large?' expanded':'')} aria-label="Animowany prototyp optycznego Konstantego">
   <span className="corner tl"/><span className="corner tr"/><span className="corner bl"/><span className="corner br"/>
@@ -82,11 +82,11 @@ function App(){
   </div>
   <div className="stage-foot"><span><b/> {selected.desc}</span><span>{fps||'—'} FPS <i/> <button onClick={()=>setLarge(x=>!x)} aria-label="Zmień rozmiar sceny"><Glyph kind="expand"/></button></span></div>
  </section>
- <div className="after-stage"><span>PROCEDURAL GPU OPTICS <i>/ REAL-TIME</i></span><button onClick={()=>setPaused(p=>!p)}><Glyph kind={paused?'play':'pause'}/>{paused?'Wznów ruch':'Zatrzymaj ruch'}</button></div>
+ <div className="after-stage"><span>OPTICAL FOLD / REFERENCE STUDY <i>/ REAL-TIME</i></span><button onClick={()=>setPaused(p=>!p)}><Glyph kind={paused?'play':'pause'}/>{paused?'Wznów ruch':'Zatrzymaj ruch'}</button></div>
  <section className="controls"><div className="control-title"><strong>CONTROL STUDIO</strong><span>NO. 01—03</span></div><div className="control-group"><div className="control-label">01 / ZACHOWANIE</div><div className="modes">{modes.map(m=><button aria-pressed={mode===m.id} className={mode===m.id?'active':''} key={m.id} onClick={()=>setMode(m.id)}><span>{m.symbol}</span>{m.label}</button>)}</div><p>{selected.desc}. Włókna poruszają się razem ze swoją powierzchnią, bez niezależnego losowego dryfu.</p></div>
  <div className="control-group"><div className="control-label"><span>02 / GĘSTOŚĆ WŁÓKIEN</span><span>{Math.round(18+26*density)} linii / warstwę</span></div><div className="range"><span>Subtelne</span><input type="range" min="0" max="1" step=".01" value={density} onChange={e=>setDensity(+e.target.value)} aria-label="Gęstość włókien"/><span>Gęste</span></div><p>Funkcje pochodnych ekranu ograniczają migotanie drobnych pasm i interferencje na telefonach.</p></div>
  <div className="control-group last"><div className="control-label">03 / RENDERING ENGINE</div><div className="technologies"><div><b>3D guide surfaces</b><span>Geometria przestrzenna</span></div><div><b>GLSL strand coverage</b><span>Filtrowane włókna</span></div><div><b>Optical veil pass</b><span>Subtelna przezroczystość</span></div><div><b>Dynamic light fields</b><span>Białe i czerwone refleksy</span></div></div></div></section>
- <footer><span>OPTICAL STRAND LAB / EXPERIMENTAL 0.1</span><span>Badanie renderingu. Nie jest to zatwierdzony projekt komercyjny.</span></footer>
+ <footer><span>OPTICAL FOLD LAB / EXPERIMENTAL 0.2</span><span>Badanie renderingu. Nie jest to zatwierdzony projekt komercyjny.</span></footer>
  </div></main>;
 }
 createRoot(document.getElementById('root')!).render(<App/>);
