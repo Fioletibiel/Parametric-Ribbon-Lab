@@ -6,6 +6,9 @@ on:
       - 'research/representation-bakeoff-v04/**'
       - '.github/workflows/representation-bakeoff-v04.yml'
   workflow_dispatch:
+concurrency:
+  group: exp04-browser-comparison
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
