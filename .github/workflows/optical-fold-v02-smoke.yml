@@ -1,0 +1,48 @@
+name: Optical Fold v02 WebGL visual smoke test
+
+on:
+  push:
+    branches: ['experiment/optical-fold-v02']
+    paths:
+      - 'optical-strand-webgl/**'
+      - '.github/workflows/optical-strand-webgl-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: optical-fold-v02-smoke
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install project and Chromium browser
+        working-directory: optical-strand-webgl
+        run: |
+          npm install --no-audit --no-fund
+          npm install --no-save playwright@1.58.2
+          npx playwright install --with-deps chromium
+      - name: Production build
+        working-directory: optical-strand-webgl
+        run: npm run build
+      - name: Start HTTP server and run desktop/mobile screenshot validation
+        working-directory: optical-strand-webgl
+        run: |
+          npm run dev -- --port 4173 > /tmp/optical-vite.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:4173/ >/dev/null && break; sleep 1; done
+          node scripts/smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: optical-fold-v02-screenshots
+          path: optical-strand-webgl/out/screenshots/
+          retention-days: 14
+          if-no-files-found: warn
