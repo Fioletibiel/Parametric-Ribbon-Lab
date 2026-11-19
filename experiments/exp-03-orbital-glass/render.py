@@ -150,6 +150,12 @@ def scene_setup():
     scene=bpy.context.scene
     scene.render.engine="CYCLES"
     scene.cycles.device="CPU"
+    # Ubuntu apt Blender is built without OpenImageDenoiser; force it off.
+    if hasattr(scene.cycles,"use_denoising"):
+        scene.cycles.use_denoising=False
+    for layer in scene.view_layers:
+        if hasattr(layer.cycles,"use_denoising"):
+            layer.cycles.use_denoising=False
     scene.cycles.max_bounces=8
     scene.cycles.transparent_max_bounces=8
     scene.cycles.transmission_bounces=8
@@ -223,6 +229,9 @@ def main():
     scene.cycles.samples=opt.samples
     scene.render.resolution_x=opt.width;scene.render.resolution_y=opt.height
     scene.render.resolution_percentage=100
+    scene.frame_set(1)
+    change_theme("dark")
+    bpy.ops.wm.save_as_mainfile(filepath=str(out/"orbital-glass-animated-source.blend"))
     for theme in ("dark","light"):
         change_theme(theme)
         for frame in (1,22,42,48,55,61):
