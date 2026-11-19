@@ -1,0 +1,105 @@
+name: EXP-03 — Editable Glass Presence Motion
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/exp03-orbital-glass.yml'
+      - 'experiments/exp-03-orbital-glass/render.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: exp03-glass-render
+  cancel-in-progress: false
+
+jobs:
+  cycles:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Blender and image processing
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends blender python3-pil
+          blender --version | head -2
+          python3 -m py_compile experiments/exp-03-orbital-glass/render.py
+      - name: Render true shape-key deformations in Cycles
+        run: |
+          mkdir -p out/exp03
+          blender --background --threads 4 \
+            --python experiments/exp-03-orbital-glass/render.py \
+            -- --out out/exp03 --width 520 --height 520 --samples 28
+          test -s out/exp03/orbital-glass-animated-source.blend
+          for theme in dark light; do
+            for frame in 001 022 042 048 055 061; do
+              test -s "out/exp03/${theme}_frame_${frame}.png"
+            done
+          done
+      - name: Make truthful motion-strip, animated GIF and browsable gallery
+        run: |
+          /usr/bin/python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image,ImageDraw,ImageFont
+          src=Path("out/exp03")
+          dest=Path("docs/renders/exp03")
+          dest.mkdir(parents=True,exist_ok=True)
+          samples=[1,22,42,48,55,61]
+          colors={"dark":(27,24,29),"light":(230,226,222)}
+          frames={}
+          for theme in ("dark","light"):
+            ims=[]
+            for f in samples:
+              a=Image.open(src/f"{theme}_frame_{f:03d}.png").convert("RGB")
+              a.save(dest/f"{theme}_frame_{f:03d}.jpg",quality=91,subsampling=0,optimize=True)
+              ims.append(a)
+            # Sparse keyframes, visual proof of actual geometry change; not full-speed animation.
+            ims[0].save(dest/f"{theme}_motion_probe.gif",save_all=True,
+                        append_images=ims[1:],duration=[550,400,280,280,280,450],
+                        loop=0,optimize=True)
+            frames[theme]=ims
+          w=430; h=440
+          sheet=Image.new("RGB",(w*6+40,h*2+130),(229,225,224))
+          d=ImageDraw.Draw(sheet)
+          font=ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",18)
+          small=ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",13)
+          d.text((22,12),"EXP-03  /  ANIMATABLE GLASS PRESENCE",font=font,fill=(38,34,38))
+          d.text((22,45),"Actual Cycles render from a Blender shape-key animated source model; NOT a raster edit",font=small,fill=(80,70,72))
+          d.text((22,69),"A green pipeline result DOES NOT mean the material quality is approved.",font=small,fill=(143,65,84))
+          for row,theme in enumerate(("dark","light")):
+            for col,fr in enumerate(samples):
+              x=20+col*w;y=95+row*h
+              im=frames[theme][col].resize((410,410),Image.Resampling.LANCZOS)
+              sheet.paste(im,(x,y))
+              d.text((x+15,y+10),f"{theme.upper()} / frame {fr}",font=small,fill=(255,255,255) if theme=="dark" else (25,25,25))
+          sheet.save(dest/"contact_sheet.jpg",quality=89,optimize=True)
+          html='''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>EXP-03 — editable optical presence</title><style>
+          body{font:16px system-ui;background:#19171b;color:#eee;margin:0;padding:clamp(20px,5vw,60px)}h1{font-size:clamp(25px,4vw,42px);font-weight:500}
+          p{line-height:1.7;max-width:780px;color:#c5b9be}img{max-width:100%;height:auto;border-radius:12px}
+          .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:22px}
+          .card{background:#272327;padding:16px;border:1px solid #54434b;border-radius:16px}a{color:#eaa4b4}</style>
+          <h1>EXP-03 — Optical presence / Blender geometry</h1><p>This is a proof that the form is an editable 3D model with real, keyed deformation. It is NOT the approved appearance of Orbis. Both themes use actual rendered material and lighting changes. The GIF samples only six frames; it is NOT production-smooth. The .blend source and full PNGs are available from GitHub Actions artifacts.</p>
+          <div class="grid"><div class="card"><h2>Dark / real geometry motion</h2><img src="dark_motion_probe.gif"></div>
+          <div class="card"><h2>Light / real geometry motion</h2><img src="light_motion_probe.gif"></div></div>
+          <h2>Frame contact sheet</h2><img src="contact_sheet.jpg"><p>No CSS glow overlay or pre-existing generated image used. All visible differences come from Blender geometry shape keys. These previews must still pass visual approval.</p></html>'''
+          (dest/"index.html").write_text(html,encoding="utf8")
+          PY
+      - name: Upload editable source and full rendered frames
+        uses: actions/upload-artifact@v4
+        with:
+          name: exp03-editable-animated-glass
+          path: out/exp03/
+          if-no-files-found: error
+          retention-days: 21
+      - name: Publish browsable preview to public repository
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f docs/renders/exp03/
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'results(exp03): publish editable glass shape-key motion frames'
+          git pull --rebase origin main
+          git push origin HEAD:main
