@@ -1,0 +1,71 @@
+name: KONSTANTY Blender sculptural production render
+on:
+  push:
+    branches: [implementation/sculptural-presence-blender-v1]
+    paths:
+      - 'sculptural-presence/build_scene.py'
+      - '.github/workflows/sculptural-presence-blender.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: sculptural-presence-blender-v1
+  cancel-in-progress: true
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Install Blender
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends blender
+          blender --version | head -n 3
+      - name: Compile script and build editable scene
+        env:
+          LIBGL_ALWAYS_SOFTWARE: "1"
+          OMP_NUM_THREADS: "4"
+        run: |
+          python3 -m py_compile sculptural-presence/build_scene.py
+          mkdir -p sculptural-presence/preview
+          blender --background --factory-startup -t 4 --python sculptural-presence/build_scene.py -- --out sculptural-presence/preview --quality draft
+          test -s sculptural-presence/preview/sculptural-clay.png
+          test -s sculptural-presence/preview/sculptural-dark.png
+          test -s sculptural-presence/preview/sculptural-light.png
+          test -s sculptural-presence/preview/KONSTANTY_sculptural_presence.blend
+      - name: Verify actual PNG outputs
+        run: |
+          python3 - <<'PY'
+          import struct,hashlib
+          from pathlib import Path
+          ps=[Path("sculptural-presence/preview/sculptural-"+t+".png") for t in ("clay","dark","light")]
+          hashes=[]
+          for p in ps:
+              b=p.read_bytes()
+              assert b[:8]==bytes.fromhex("89504e470d0a1a0a")
+              w,h=struct.unpack(">II",b[16:24])
+              assert w>=1000 and h>=450 and len(b)>10000
+              hashes.append(hashlib.sha256(b).hexdigest())
+              print(p,w,h,len(b))
+          assert len(set(hashes))==3,"identical images"
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KONSTANTY-blender-sculptural-presence-v1
+          path: |
+            sculptural-presence/preview/*.png
+            sculptural-presence/preview/*.blend
+            sculptural-presence/preview/*.glb
+          retention-days: 30
+      - name: Publish generated preview images
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add sculptural-presence/preview/sculptural-clay.png sculptural-presence/preview/sculptural-dark.png sculptural-presence/preview/sculptural-light.png
+          if ! git diff --cached --quiet; then
+            git commit -m 'render: publish Blender Cycles Dark/Light/Clay [skip ci]'
+            git push origin HEAD:implementation/sculptural-presence-blender-v1
+          fi
