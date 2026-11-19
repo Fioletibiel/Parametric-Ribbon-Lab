@@ -194,7 +194,10 @@ def configure_render(quality):
     s=bpy.context.scene
     s.render.engine="CYCLES";s.cycles.device="CPU"
     s.cycles.samples=18 if quality=="draft" else 56
-    s.cycles.use_denoising=True
+    # Ubuntu Blender packages may be compiled without OpenImageDenoiser.
+    s.cycles.use_denoising=False
+    try: s.view_layers[0].cycles.use_denoising=False
+    except Exception: pass
     s.cycles.max_bounces=7
     s.cycles.transparent_max_bounces=16
     s.render.resolution_x=1120 if quality=="draft" else 1480
