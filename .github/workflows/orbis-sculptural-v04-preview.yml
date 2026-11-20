@@ -1,0 +1,60 @@
+name: EXP-04 Orbis Sculptural — WebGL build & Render preview
+on:
+  push:
+    branches:
+      - experiment/orbis-sculptural-webgl-v04
+    paths:
+      - 'experiments/orbis-sculptural-webgl-v04/**'
+      - '.github/workflows/orbis-sculptural-v04-preview.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: orbis-sculptural-v04-preview
+  cancel-in-progress: true
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Checkout isolated experimental branch
+        uses: actions/checkout@v4
+        with:
+          ref: experiment/orbis-sculptural-webgl-v04
+          path: source
+      - name: Checkout public preview directory from main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: public-deploy
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Build actual three.js modules locally
+        working-directory: source/experiments/orbis-sculptural-webgl-v04
+        run: |
+          npm install --no-audit --no-fund
+          npm run build
+          test -s dist/index.html
+          test -n "$(find dist/assets -name '*.js' -size +1k | head -1)"
+      - name: Publish V04 without replacing EXP-03
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p public-deploy/docs/renders/exp03/v04
+          cp -a source/experiments/orbis-sculptural-webgl-v04/dist/. public-deploy/docs/renders/exp03/v04/
+          cd public-deploy
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f docs/renders/exp03/v04
+          if git diff --cached --quiet; then
+            echo "No asset changes"; exit 0
+          fi
+          git commit -m "preview(orbis): publish real-time sculptural WebGL v04"
+          git pull --rebase origin main
+          git push origin HEAD:main
+      - name: Archive independent frontend build
+        uses: actions/upload-artifact@v4
+        with:
+          name: orbis-sculptural-webgl-v04-dist
+          path: source/experiments/orbis-sculptural-webgl-v04/dist/
+          retention-days: 14
