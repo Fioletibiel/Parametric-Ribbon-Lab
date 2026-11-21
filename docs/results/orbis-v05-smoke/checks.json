@@ -1,0 +1,46 @@
+{
+  "mobile": {
+    "dark": {
+      "mode": "idle",
+      "light": false,
+      "paused": false,
+      "phase": 2.403399999999997,
+      "motion": 0.13983268509397695,
+      "webgl": true,
+      "fps": "WEBGL2 · FPS 60"
+    },
+    "light": {
+      "mode": "speak",
+      "light": true,
+      "paused": false,
+      "phase": 4.770000000000001,
+      "motion": 0.897109599351576,
+      "webgl": true,
+      "fps": "WEBGL2 · FPS 48"
+    },
+    "errors": [],
+    "overflow": false
+  },
+  "desktop": {
+    "dark": {
+      "mode": "idle",
+      "light": false,
+      "paused": false,
+      "phase": 2.5498999999999965,
+      "motion": 0.13988898362626148,
+      "webgl": true,
+      "fps": "WEBGL2 · FPS 60"
+    },
+    "light": {
+      "mode": "speak",
+      "light": true,
+      "paused": false,
+      "phase": 4.213299999999995,
+      "motion": 0.8529212932958098,
+      "webgl": true,
+      "fps": "WEBGL2 · FPS 29"
+    },
+    "errors": [],
+    "overflow": false
+  }
+}
