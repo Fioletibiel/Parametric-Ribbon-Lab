@@ -1,0 +1,17 @@
+{
+  "name": "orbis-sculptural-webgl-v04",
+  "private": true,
+  "version": "0.4.0",
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite --host 0.0.0.0",
+    "preview": "vite preview --host"
+  },
+  "dependencies": {
+    "three": "0.181.2"
+  },
+  "devDependencies": {
+    "vite": "^6.3.6"
+  }
+}
