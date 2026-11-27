@@ -1,0 +1,63 @@
+name: Orbis v07 — inspect completed source renders, no rerender
+on:
+  push:
+    branches: [research/orbis-reference-geometry-20261127]
+    paths:
+      - .github/workflows/orbis-v07-publish-proof.yml
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish-existing-artifact:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout the public result branch only
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Download SOURCE + STILL artifact from completed Blender job
+        uses: actions/download-artifact@v4
+        with:
+          name: orbis-v07-editable-source-stills
+          run-id: 45931379981
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: recovered
+      - name: Convert only camera stills to public diagnostic JPEG
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends python3-pil
+          /usr/bin/python3 - <<'PY'
+          from PIL import Image,ImageDraw,ImageFont
+          from pathlib import Path
+          import base64
+          source=Path('recovered')
+          target=Path('docs/renders/exp02/orbis-v07')
+          target.mkdir(parents=True,exist_ok=True)
+          frames=[]
+          for theme in ['dark','light']:
+              im=Image.open(source/f'orbis_{theme}_still.png').convert('RGB')
+              im.save(target/f'{theme}.jpg',quality=83,optimize=True)
+              frames.append(im)
+          canvas=Image.new('RGB',(1120,640),'#171519')
+          draw=ImageDraw.Draw(canvas)
+          for i,img in enumerate(frames):canvas.paste(img,(20+560*i,68))
+          font=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',15)
+          draw.text((20,16),'ORBIS / SOURCE GEOMETRY v07 — UNAPPROVED DIAGNOSTIC',font=font,fill='#F5E9E4')
+          draw.text((20,615),'Actual Blender geometry: both themes. NOT production quality approval.',font=font,fill='#B9A6AA')
+          canvas.save(target/'diagnostic.jpg',quality=77,optimize=True)
+          for n in ('dark','light','diagnostic'):
+              raw=(target/f'{n}.jpg').read_bytes()
+              (target/f'{n}.b64.txt').write_text(base64.b64encode(raw).decode('ascii'),encoding='ascii')
+          print('Recorded camera stills and UTF8 visual inspection encodings')
+          PY
+      - name: Publish ONLY diagnostics (not the source private reference)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f docs/renders/exp02/orbis-v07/
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "results(orbis-v07): publish true Blender dark/light diagnostic stills"
+          git pull --rebase origin main
+          git push origin HEAD:main
