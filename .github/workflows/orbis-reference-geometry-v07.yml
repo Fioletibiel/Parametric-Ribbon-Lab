@@ -1,0 +1,84 @@
+name: Orbis v07 — reference-matched Blender source stills
+on:
+  push:
+    branches: [research/orbis-reference-geometry-20261127]
+    paths:
+      - experiments/orbis-reference-geometry-v07/**
+      - .github/workflows/orbis-reference-geometry-v07.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: orbis-reference-geometry-v07
+  cancel-in-progress: true
+jobs:
+  source-model:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/orbis-reference-geometry-20261127
+          path: source
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: public-results
+          fetch-depth: 0
+      - name: Install actual Blender and Pillow
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends blender python3-pil
+          blender --version | head -2
+          python3 -m py_compile source/experiments/orbis-reference-geometry-v07/reconstruct.py
+      - name: Render source scene dark
+        run: |
+          mkdir -p output
+          blender -b --threads 4 --python source/experiments/orbis-reference-geometry-v07/reconstruct.py -- --output output --theme dark --size 540 --samples 80
+          test -s output/orbis_reference_geometry_dark.blend
+          test -s output/orbis_dark_still.png
+      - name: Render separate light studio scene
+        run: |
+          blender -b --threads 4 --python source/experiments/orbis-reference-geometry-v07/reconstruct.py -- --output output --theme light --size 540 --samples 80
+          test -s output/orbis_reference_geometry_light.blend
+          test -s output/orbis_light_still.png
+      - name: Generate visible QUALITY DIAGNOSTIC (not approved art)
+        shell: bash
+        run: |
+          /usr/bin/python3 - <<'PY'
+          from PIL import Image,ImageDraw,ImageFont
+          from pathlib import Path
+          o=Path('output')
+          out=Path('public-results/docs/renders/exp02/orbis-v07')
+          out.mkdir(parents=True,exist_ok=True)
+          frames=[]
+          for theme in ['dark','light']:
+            im=Image.open(o/f'orbis_{theme}_still.png').convert('RGB')
+            im.save(out/f'{theme}.jpg',quality=90,optimize=True)
+            frames.append(im)
+          canvas=Image.new('RGB',(1120,640),'#171519')
+          d=ImageDraw.Draw(canvas)
+          for i,img in enumerate(frames):
+            canvas.paste(img,(20+560*i,68))
+          font=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',16)
+          d.text((24,16),'ORBIS / SOURCE GEOMETRY v07 — MATERIAL STUDY; NOT VISUALLY APPROVED',font=font,fill='#F1DDDB')
+          d.text((24,611),'True Blender Cycles meshes from individually traced boundaries; no reference raster in the scene',font=font,fill='#BAA5A9')
+          canvas.save(out/'diagnostic.jpg',quality=89,optimize=True)
+          PY
+      - name: Preserve editable source models
+        uses: actions/upload-artifact@v4
+        with:
+          name: orbis-v07-editable-source-stills
+          path: output/
+          retention-days: 15
+          if-no-files-found: error
+      - name: Publish only under isolated generic public diagnostics
+        run: |
+          cd public-results
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/renders/exp02/orbis-v07/
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "results(orbis): reference-fitted Blender meshes / dark-light diagnostics"
+          git pull --rebase origin main
+          git push origin HEAD:main
