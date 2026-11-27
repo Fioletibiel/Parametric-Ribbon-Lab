@@ -24,10 +24,10 @@ def make_world(scene):
  img=bpy.data.images.new("Continuous elongated studio reflection",width=512,height=256,float_buffer=True)
  pixels=[]
  lights=[
-   (.27,.32,.21,.17,3.8,(1.,.84,.77)),
-   (.68,.35,.08,.28,2.4,(1.,.75,.71)),
-   (.84,.68,.18,.10,2.1,(1.,.67,.65)),
-   (.51,.86,.27,.055,2.7,(1.,.83,.77))
+   (.27,.32,.21,.17,3.8,(1.,.94,.91)),
+   (.68,.35,.08,.28,2.4,(1.,.89,.89)),
+   (.84,.68,.18,.10,2.1,(1.,.84,.87)),
+   (.51,.86,.27,.055,2.7,(1.,.95,.93))
  ]
  for yi in range(256):
   v=yi/256
@@ -60,12 +60,12 @@ def shell_shader():
  tr=n.new('ShaderNodeBsdfTransparent')
  tr.inputs['Color'].default_value=(.98,.96,.96,1)
  glossy=n.new('ShaderNodeBsdfGlossy')
- glossy.inputs['Color'].default_value=(.86,.74,.72,1)
- glossy.inputs['Roughness'].default_value=.21
+ glossy.inputs['Color'].default_value=(.43,.36,.38,1)
+ glossy.inputs['Roughness'].default_value=.085
  layer=n.new('ShaderNodeLayerWeight');layer.inputs['Blend'].default_value=.17
  fac=n.new('ShaderNodeMapRange')
  fac.inputs['From Min'].default_value=0.;fac.inputs['From Max'].default_value=1.
- fac.inputs['To Min'].default_value=.06;fac.inputs['To Max'].default_value=.62
+ fac.inputs['To Min'].default_value=.012;fac.inputs['To Max'].default_value=.29
  fac.clamp=True
  link(layer.outputs['Fresnel'],fac.inputs['Value'])
  mix=n.new('ShaderNodeMixShader')
@@ -81,7 +81,7 @@ def film_shader(kind):
  out=n.new('ShaderNodeOutputMaterial')
  tr=n.new('ShaderNodeBsdfTransparent')
  p=n.new('ShaderNodeBsdfPrincipled')
- setinp(p,('Base Color',),(.18,.012,.029,1) if red else (.67,.50,.48,1) if rear else (.82,.66,.59,1))
+ setinp(p,('Base Color',),(.11,.006,.02,1) if red else (.34,.31,.33,1) if rear else (.61,.54,.52,1))
  setinp(p,('Roughness',),.21 if red else .26)
  setinp(p,('Metallic',),.06)
  setinp(p,('Transmission Weight','Transmission'),0.0)
@@ -89,8 +89,8 @@ def film_shader(kind):
  facing=n.new('ShaderNodeLayerWeight');facing.inputs['Blend'].default_value=.29
  mapping=n.new('ShaderNodeMapRange')
  mapping.inputs['From Min'].default_value=0.;mapping.inputs['From Max'].default_value=1.
- mapping.inputs['To Min'].default_value=.35 if rear else .48
- mapping.inputs['To Max'].default_value=.64 if red else .70
+ mapping.inputs['To Min'].default_value=.22 if rear else .27
+ mapping.inputs['To Max'].default_value=.40 if red else .50
  mapping.clamp=True
  link(facing.outputs['Fresnel'],mapping.inputs['Value'])
  mix=n.new('ShaderNodeMixShader')
