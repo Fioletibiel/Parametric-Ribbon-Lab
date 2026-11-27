@@ -1,0 +1,58 @@
+name: Orbis v07 — geometry-only verification
+on:
+  push:
+    branches: [research/orbis-reference-geometry-20261127]
+    paths:
+      - experiments/orbis-reference-geometry-v07/isolate_geometry.py
+      - .github/workflows/orbis-v07-isolate.yml
+permissions:
+  contents: write
+  actions: read
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/orbis-reference-geometry-20261127
+          path: source
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: output-repo
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: orbis-v07-editable-source-stills
+          run-id: 45931379981
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: recovered
+      - name: Blender geometry-only pass
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends blender python3-pil
+          blender -b recovered/orbis_reference_geometry_dark.blend \
+            --python source/experiments/orbis-reference-geometry-v07/isolate_geometry.py \
+            -- output/geometry_only.png
+          test -s output/geometry_only.png
+      - name: Save and inspect isolated image
+        run: |
+          /usr/bin/python3 - <<'PY'
+          from PIL import Image
+          from pathlib import Path
+          import base64
+          root=Path('output-repo/docs/renders/exp02/orbis-v07')
+          root.mkdir(parents=True,exist_ok=True)
+          image=Image.open('output/geometry_only.png').convert('RGB')
+          image.save(root/'geometry_only.jpg',quality=84,optimize=True)
+          raw=(root/'geometry_only.jpg').read_bytes()
+          (root/'geometry_only.b64.txt').write_text(base64.b64encode(raw).decode('ascii'),encoding='ascii')
+          PY
+          cd output-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f docs/renders/exp02/orbis-v07/geometry_only*
+          git commit -m "results(orbis-v07): isolate traced mesh from optical materials"
+          git pull --rebase origin main
+          git push origin HEAD:main
