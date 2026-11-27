@@ -1,0 +1,43 @@
+name: Orbis v06 — real browser WebGL smoke
+on:
+  push:
+    branches: [experiment/orbis-sculpted-surface-v06]
+    paths:
+      - experiments/orbis-sculpted-surface-v06/**
+      - .github/workflows/orbis-v06-browser.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install npm and headless browser
+        working-directory: experiments/orbis-sculpted-surface-v06
+        run: |
+          npm install --no-audit --no-fund
+          npm install --no-save playwright@1.58.2
+          npx playwright install --with-deps chromium
+      - name: Build and boot preview
+        working-directory: experiments/orbis-sculpted-surface-v06
+        run: |
+          npm run build
+          nohup npm run preview -- --port 4173 > /tmp/orbis-preview.log 2>&1 &
+          sleep 3
+          curl -f http://127.0.0.1:4173/
+      - name: Exercise GPU modes and capture screenshots
+        working-directory: experiments/orbis-sculpted-surface-v06
+        run: |
+          mkdir -p test-results
+          node smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: orbis-v06-browser-screenshots
+          path: experiments/orbis-sculpted-surface-v06/test-results/
+          retention-days: 10
