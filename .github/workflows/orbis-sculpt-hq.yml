@@ -1,0 +1,104 @@
+name: ORBIS DCC — 2K quality gate, existing geometry
+on:
+  push:
+    branches: [research/orbis-blender-sculpt-rig-20261127]
+    paths:
+      - .github/workflows/orbis-sculpt-hq.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: orbis-sculpt-hq
+  cancel-in-progress: false
+jobs:
+  hq:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 100
+    strategy:
+      fail-fast: false
+      matrix:
+        theme: [dark, light]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/orbis-blender-sculpt-rig-20261127
+      - uses: actions/download-artifact@v4
+        with:
+          name: orbis-sculpt-20261127-blender-source
+          run-id: 45965050728
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: recovered
+      - name: Install official Blender 4.5 LTS build with OIDN
+        run: |
+          set -euo pipefail
+          curl --retry 3 -fL https://download.blender.org/release/Blender4.5/blender-4.5.3-linux-x64.tar.xz -o /tmp/blender.tar.xz
+          mkdir -p /tmp/blender
+          tar -xJf /tmp/blender.tar.xz --strip-components=1 -C /tmp/blender
+          /tmp/blender/blender --version
+      - name: Rerender archived scene (no model or studio edits)
+        env:
+          THEME: ${{ matrix.theme }}
+        run: |
+          set -euo pipefail
+          mkdir -p output
+          /tmp/blender/blender -b "recovered/orbis_${THEME}_beauty.blend" --threads 4 --python-exit-code 1 \
+            --python experiments/orbis-blender-sculpt-20261127/hq_rerender.py -- output "$THEME"
+          test -s "output/${THEME}_clean.png"
+          test -s "output/${THEME}_hq.blend"
+          test -s "output/${THEME}_glow_0001.png"
+          cp "recovered/orbis_${THEME}_beauty.png" "output/${THEME}_original.png"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: orbis-hq-${{ matrix.theme }}
+          path: output/
+          if-no-files-found: error
+          retention-days: 20
+  compare:
+    needs: hq
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: orbis-hq-*
+          merge-multiple: true
+          path: output
+      - name: Create matched-size comparisons and retain full quality pictures
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends python3-pil
+          /usr/bin/python3 - <<'PY'
+          from PIL import Image,ImageDraw,ImageFont
+          from pathlib import Path
+          import base64
+          root=Path('docs/renders/orbis-sculpt-20261127/hq')
+          root.mkdir(parents=True,exist_ok=True)
+          s=Image.new('RGB',(1490,1110),'#181619')
+          d=ImageDraw.Draw(s)
+          font=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',16)
+          d.text((10,12),'ORBIS / SAME SOURCE GEOMETRY — CONTROLLED RENDER QUALITY COMPARISON',font=font,fill='#F5E9E4')
+          for col,label in enumerate(('Original 640px / 84 samples','2K / 512 max + OIDN','Same 2K render + restrained glow')):
+              d.text((10+490*col,48),label,font=font,fill='#E0CECD')
+          for row,theme in enumerate(('dark','light')):
+              for col,name in enumerate((theme+'_original',theme+'_clean',theme+'_glow_0001')):
+                  img=Image.open('output/'+name+'.png').convert('RGB')
+                  img.save(root/(name+'.jpg'),quality=94,subsampling=0,optimize=True)
+                  s.paste(img.resize((480,480),Image.Resampling.LANCZOS),(10+490*col,75+510*row))
+          s.save(root/'comparison.jpg',quality=90,optimize=True)
+          (root/'comparison.b64.txt').write_text(base64.b64encode((root/'comparison.jpg').read_bytes()).decode('ascii'))
+          (root/'index.html').write_text('''<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Orbis — HQ quality test</title><style>body{background:#181619;color:#eee;font:16px system-ui;margin:20px}img{max-width:100%;height:auto}a{color:#e6a3b3}main{max-width:1500px;margin:auto}section{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}</style><main><h1>Orbis — test jakości renderingu</h1><p>Ta sama geometria, materiały i światło. 2K, maks. 512 próbek, OIDN. Osobno wersja z poświatą. Nie jest to zatwierdzona implementacja.</p><img src="comparison.jpg" alt="Porównanie sześciu renderów"><section>'''+''.join(f'<div><h2>{t} / {label}</h2><a href="{t}_{suffix}.jpg"><img src="{t}_{suffix}.jpg"></a></div>' for t in ('dark','light') for label,suffix in [('oryginał','original'),('2K','clean'),('2K + glow','glow_0001')])+ '</section></main>',encoding='utf-8')
+          PY
+      - name: Publish comparison only
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f docs/renders/orbis-sculpt-20261127/hq
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "results(orbis): controlled 2K OIDN render comparison"
+          git pull --rebase origin main
+          git push origin HEAD:main

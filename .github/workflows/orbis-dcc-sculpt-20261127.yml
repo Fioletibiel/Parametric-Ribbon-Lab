@@ -1,0 +1,99 @@
+name: ORBIS DCC — sculpted source + dual material gate
+on:
+  push:
+    branches: [research/orbis-blender-sculpt-rig-20261127]
+    paths:
+      - experiments/orbis-blender-sculpt-20261127/**
+      - .github/workflows/orbis-dcc-sculpt-20261127.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: orbis-dcc-sculpt-20261127
+  cancel-in-progress: false
+jobs:
+  source-validation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Fetch experimental source branch
+        uses: actions/checkout@v4
+        with:
+          ref: research/orbis-blender-sculpt-rig-20261127
+          path: experiment
+      - name: Fetch result directory in default public branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: results
+          fetch-depth: 0
+      - name: Prepare Blender and imaging tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends blender python3-pil
+          blender --version | head -3
+          python3 -m py_compile experiment/experiments/orbis-blender-sculpt-20261127/scene.py
+      - name: Render CLAY geometry diagnostic from actual meshes
+        run: |
+          mkdir -p output
+          blender -b --threads 4 --python experiment/experiments/orbis-blender-sculpt-20261127/scene.py \
+            -- --out output --theme dark --mode clay --size 640 --samples 20
+          test -s output/orbis_dark_clay.blend
+          test -s output/orbis_dark_clay.png
+      - name: Render DARK optical still from actual meshes
+        run: |
+          blender -b --threads 4 --python experiment/experiments/orbis-blender-sculpt-20261127/scene.py \
+            -- --out output --theme dark --mode beauty --size 640 --samples 84
+          test -s output/orbis_dark_beauty.blend
+          test -s output/orbis_dark_beauty.png
+      - name: Render LIGHT independently lit version of same geometry
+        run: |
+          blender -b --threads 4 --python experiment/experiments/orbis-blender-sculpt-20261127/scene.py \
+            -- --out output --theme light --mode beauty --size 640 --samples 84
+          test -s output/orbis_light_beauty.blend
+          test -s output/orbis_light_beauty.png
+      - name: Prepare factual visual QA sheet
+        run: |
+          /usr/bin/python3 - <<'PY'
+          from PIL import Image,ImageDraw,ImageFont
+          from pathlib import Path
+          import base64
+          source=Path('output')
+          target=Path('results/docs/renders/orbis-sculpt-20261127')
+          target.mkdir(parents=True,exist_ok=True)
+          frames=[]
+          for key in ('dark_clay','dark_beauty','light_beauty'):
+              im=Image.open(source/f'orbis_{key}.png').convert('RGB')
+              im.save(target/f'{key}.jpg',quality=87,optimize=True)
+              frames.append(im.resize((480,480),Image.Resampling.LANCZOS))
+          sheet=Image.new('RGB',(1490,610),'#171519')
+          draw=ImageDraw.Draw(sheet)
+          for i,img in enumerate(frames):sheet.paste(img,(10+i*490,65))
+          font=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',16)
+          small=ImageFont.truetype('/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',12)
+          draw.text((10,12),'ORBIS / 3D SCULPTURE GATE — STILL ONLY / NOT PRODUCTION APPROVED',font=font,fill='#F5E9E4')
+          for i,name in enumerate(('CLAY / REAL GEOMETRY','DARK / MATERIALS','LIGHT / MATERIALS')):
+              draw.text((12+i*490,555),name,font=font,fill='#DFC7C7')
+          draw.text((10,590),'No source imagery is mapped to the 3D model. Optical surfaces and highlights are actual Blender material and geometry.',font=small,fill='#AC9B9D')
+          sheet.save(target/'diagnostic.jpg',quality=86,optimize=True)
+          for name in ('diagnostic','dark_beauty','light_beauty','dark_clay'):
+              p=target/f'{name}.jpg'
+              (target/f'{name}.b64.txt').write_text(base64.b64encode(p.read_bytes()).decode('ascii'),encoding='ascii')
+          PY
+      - name: Archive editable scene sources and full PNGs
+        uses: actions/upload-artifact@v4
+        with:
+          name: orbis-sculpt-20261127-blender-source
+          path: output/
+          if-no-files-found: error
+          retention-days: 20
+      - name: Publish only inspection images, never a new app version
+        run: |
+          cd results
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f docs/renders/orbis-sculpt-20261127
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "results(orbis): DCC sculpt geometry, dual-theme material QA"
+          git pull --rebase origin main
+          git push origin HEAD:main
