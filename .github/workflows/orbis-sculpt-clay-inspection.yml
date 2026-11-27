@@ -1,0 +1,49 @@
+name: ORBIS DCC — immediate geometry-only QA
+on:
+  push:
+    branches: [research/orbis-blender-sculpt-rig-20261127]
+    paths:
+      - .github/workflows/orbis-sculpt-clay-inspection.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  geometry-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/orbis-blender-sculpt-rig-20261127
+          path: experiment
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: result
+          fetch-depth: 0
+      - run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends blender python3-pil
+          blender -b --threads 4 --python experiment/experiments/orbis-blender-sculpt-20261127/scene.py \
+            -- --out output --theme dark --mode clay --size 720 --samples 8
+          test -s output/orbis_dark_clay.png
+      - name: Expose isolated geometry preview without misleading beauty render
+        run: |
+          /usr/bin/python3 - <<'PY'
+          from PIL import Image
+          from pathlib import Path
+          import base64
+          root=Path('result/docs/renders/orbis-sculpt-20261127')
+          root.mkdir(parents=True,exist_ok=True)
+          image=Image.open('output/orbis_dark_clay.png').convert('RGB')
+          image.save(root/'geometry_first.jpg',quality=84,optimize=True)
+          raw=(root/'geometry_first.jpg').read_bytes()
+          (root/'geometry_first.b64.txt').write_text(base64.b64encode(raw).decode('ascii'),encoding='ascii')
+          PY
+          cd result
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f docs/renders/orbis-sculpt-20261127/geometry_first*
+          git commit -m "results(orbis): isolated spatial geometry first"
+          git pull --rebase origin main
+          git push origin HEAD:main
